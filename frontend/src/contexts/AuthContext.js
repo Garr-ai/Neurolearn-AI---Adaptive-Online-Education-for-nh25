@@ -34,7 +34,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const resetPassword = (email) => {
-    return sendPasswordResetEmail(auth, email);
+    const actionCodeSettings = {
+      url: `${window.location.origin}/login`,
+      handleCodeInApp: false,
+    };
+    console.log('resetPassword called with:', { email, actionCodeSettings });
+    return sendPasswordResetEmail(auth, email, actionCodeSettings);
   };
 
   useEffect(() => {
