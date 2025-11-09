@@ -1,0 +1,88 @@
+.history {
+  width: 100%;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.history-header h2 {
+  font-size: 2rem;
+  color: #333;
+}
+
+.filter-select {
+  width: auto;
+  min-width: 200px;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+}
+
+.events-table {
+  overflow-x: auto;
+}
+
+.events-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.events-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.events-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.events-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.events-table tbody tr:hover {
+  background: #f5f5f5;
+}
+
+.mode-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.mode-meeting {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.mode-study {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.mode-lecture {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.mode-background {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
