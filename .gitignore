@@ -30,6 +30,13 @@ wheels/
 # Environment
 .env
 .env.local
+frontend/.env
+frontend/.env.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
 
 # React
 node_modules/
