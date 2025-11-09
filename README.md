@@ -12,8 +12,7 @@ EEG-based relaxation recommendation system using OpenBCI hardware.
 
 ## Overview
 
-NeuroCalm is a hackathon-friendly application that uses EEG data from OpenBCI to measure brain activity and recommend personalized relaxation techniques. The system collects EEG data once and repurposes it across four different dashboards: Meetings, Studying, Lectures, and Health Journal.
-
+NeuroCalm is a web application that uses EEG data from OpenBCI to measure brain activity and recommend personalized relaxation techniques. The system collects EEG consistently and using reinforcement learning adapts and provides suggestions for relaxation, tailoring calming methods to the user's needs.
 ## Architecture
 
 - **Local EEG Service (Python)**: Reads from OpenBCI using BrainFlow, calculates band powers, and streams via WebSocket

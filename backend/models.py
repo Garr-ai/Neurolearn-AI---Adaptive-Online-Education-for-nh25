@@ -26,3 +26,5 @@ class EventResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+
