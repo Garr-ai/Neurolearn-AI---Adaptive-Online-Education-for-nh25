@@ -26,7 +26,7 @@ function AppContent() {
     <div className="App">
       <nav className="navbar">
         <div className="nav-container">
-          <h1 className="nav-title">NeuroCalm</h1>
+          <h1 className="nav-title">NeuroCalm by BK</h1>
           <div className="nav-links">
             {currentUser ? (
               <>
