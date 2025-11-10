@@ -2,6 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
+// Encouraging messages array
+const ENCOURAGING_MESSAGES = [
+  "Great job! You're doing well. Keep breathing and stay calm.",
+  "You've got this! Your stress levels are improving.",
+  "Excellent! You're feeling more relaxed now.",
+  "Wonderful! Take a moment to appreciate your calm state.",
+  "You're doing amazing! Your breathing is helping you find peace.",
+  "Perfect! You've successfully calmed yourself down.",
+  "Fantastic! You're in control and feeling better.",
+  "Well done! Your stress has decreased. Keep up the great work!"
+];
+
 const Dashboard = ({ currentUser }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [mentalStateMode, setMentalStateMode] = useState('normal'); // calm, stressed, normal
@@ -21,6 +33,12 @@ const Dashboard = ({ currentUser }) => {
   });
   const [status, setStatus] = useState('Disconnected');
   const [error, setError] = useState(null);
+  const [showBreathingExercise, setShowBreathingExercise] = useState(false);
+  const [isTabFocused, setIsTabFocused] = useState(true);
+  const [breathingPhase, setBreathingPhase] = useState('inhale'); // inhale, hold, exhale, pause
+  const [breathingCycle, setBreathingCycle] = useState(0);
+  const [encouragingMessage, setEncouragingMessage] = useState(null);
+  const wasManuallyClosedRef = useRef(false);
   
   // Refs to track reconnection state
   const reconnectTimeoutRef = useRef(null);
@@ -28,6 +46,9 @@ const Dashboard = ({ currentUser }) => {
   const isConnectingRef = useRef(false);
   const wsRef = useRef(null);
   const reconnectIntervalRef = useRef(null);
+  const breathingIntervalRef = useRef(null);
+  const autoCloseTimerRef = useRef(null);
+  const encouragingMessageTimerRef = useRef(null);
   
   // WebSocket URL
   const WS_URL = 'ws://localhost:8765';
@@ -226,6 +247,149 @@ const Dashboard = ({ currentUser }) => {
     }
   };
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+  }, []);
+
+  // Track tab visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabFocused(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    setIsTabFocused(!document.hidden);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Auto-close breathing exercise and reduce stress after 15-20 seconds
+  useEffect(() => {
+    if (showBreathingExercise) {
+      // Reset manual close flag when popup opens
+      wasManuallyClosedRef.current = false;
+      
+      // Random time between 15-20 seconds (15000-20000 ms)
+      const randomTime = Math.floor(Math.random() * 5000) + 15000;
+      
+      autoCloseTimerRef.current = setTimeout(() => {
+        // Only proceed if popup wasn't manually closed
+        if (!wasManuallyClosedRef.current) {
+          // Change mental state to calm
+          const currentWs = wsRef.current;
+          if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+            try {
+              console.log('Auto-changing mental state mode to: calm');
+              currentWs.send(JSON.stringify({ type: 'set_mental_state', mode: 'calm' }));
+            } catch (error) {
+              console.error('Error sending mental state change:', error);
+            }
+          }
+          
+          // Close the popup
+          setShowBreathingExercise(false);
+          
+          // Show encouraging message
+          const randomMessage = ENCOURAGING_MESSAGES[Math.floor(Math.random() * ENCOURAGING_MESSAGES.length)];
+          setEncouragingMessage(randomMessage);
+          
+          // Hide encouraging message after 5 seconds
+          encouragingMessageTimerRef.current = setTimeout(() => {
+            setEncouragingMessage(null);
+          }, 5000);
+        }
+      }, randomTime);
+
+      return () => {
+        if (autoCloseTimerRef.current) {
+          clearTimeout(autoCloseTimerRef.current);
+          autoCloseTimerRef.current = null;
+        }
+        if (encouragingMessageTimerRef.current) {
+          clearTimeout(encouragingMessageTimerRef.current);
+          encouragingMessageTimerRef.current = null;
+        }
+      };
+    } else {
+      // Clear timers when popup is closed
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+      if (encouragingMessageTimerRef.current) {
+        clearTimeout(encouragingMessageTimerRef.current);
+        encouragingMessageTimerRef.current = null;
+      }
+    }
+  }, [showBreathingExercise]);
+
+  // Breathing exercise animation
+  useEffect(() => {
+    if (showBreathingExercise) {
+      const phases = [
+        { name: 'inhale', duration: 4000 },
+        { name: 'hold', duration: 2000 },
+        { name: 'exhale', duration: 4000 },
+        { name: 'pause', duration: 2000 }
+      ];
+
+      let currentPhaseIndex = 0;
+      let cycleCount = 1;
+
+      const advancePhase = () => {
+        currentPhaseIndex = (currentPhaseIndex + 1) % phases.length;
+        
+        if (currentPhaseIndex === 0) {
+          // Completed a full cycle (inhale again)
+          cycleCount++;
+          setBreathingCycle(cycleCount);
+        }
+        
+        setBreathingPhase(phases[currentPhaseIndex].name);
+        
+        // Schedule next phase change
+        if (breathingIntervalRef.current) {
+          clearTimeout(breathingIntervalRef.current);
+        }
+        
+        breathingIntervalRef.current = setTimeout(() => {
+          advancePhase();
+        }, phases[currentPhaseIndex].duration);
+      };
+
+      // Start with inhale
+      setBreathingPhase('inhale');
+      setBreathingCycle(1);
+      
+      // Start the cycle
+      breathingIntervalRef.current = setTimeout(() => {
+        advancePhase();
+      }, phases[0].duration);
+
+      return () => {
+        if (breathingIntervalRef.current) {
+          clearTimeout(breathingIntervalRef.current);
+          breathingIntervalRef.current = null;
+        }
+      };
+    } else {
+      // Reset breathing state when closed
+      setBreathingPhase('inhale');
+      setBreathingCycle(0);
+      if (breathingIntervalRef.current) {
+        clearTimeout(breathingIntervalRef.current);
+        breathingIntervalRef.current = null;
+      }
+    }
+  }, [showBreathingExercise]);
+
   // Periodic connection check - verify connection is still alive
   useEffect(() => {
     const checkConnection = () => {
@@ -274,6 +438,24 @@ const Dashboard = ({ currentUser }) => {
         wsRef.current = null;
       }
       
+      // Clear breathing interval
+      if (breathingIntervalRef.current) {
+        clearTimeout(breathingIntervalRef.current);
+        breathingIntervalRef.current = null;
+      }
+      
+      // Clear auto-close timer
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+      
+      // Clear encouraging message timer
+      if (encouragingMessageTimerRef.current) {
+        clearTimeout(encouragingMessageTimerRef.current);
+        encouragingMessageTimerRef.current = null;
+      }
+      
       isConnectingRef.current = false;
     };
   }, []); // Empty dependency array - only run on mount/unmount
@@ -319,6 +501,29 @@ const Dashboard = ({ currentUser }) => {
     }
   };
 
+  const showNotification = () => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('NeuroCalm - Time for a Calming Exercise', {
+        body: 'You\'re feeling stressed. Take a moment to focus on your breathing and find calm.',
+        icon: '/favicon.ico',
+        tag: 'stress-alert',
+        requireInteraction: false
+      });
+    } else if ('Notification' in window && Notification.permission === 'default') {
+      // Request permission if not yet asked
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('NeuroCalm - Time for a Calming Exercise', {
+            body: 'You\'re feeling stressed. Take a moment to focus on your breathing and find calm.',
+            icon: '/favicon.ico',
+            tag: 'stress-alert',
+            requireInteraction: false
+          });
+        }
+      });
+    }
+  };
+
   const changeMentalStateMode = (mode) => {
     const currentWs = wsRef.current;
     
@@ -333,6 +538,17 @@ const Dashboard = ({ currentUser }) => {
     try {
       console.log(`Changing mental state mode to: ${mode}`);
       currentWs.send(JSON.stringify({ type: 'set_mental_state', mode }));
+      
+      // If stressed mode is selected, show notification or popup based on tab focus
+      if (mode === 'stressed') {
+        if (!isTabFocused) {
+          // Tab is not focused - show notification
+          showNotification();
+        } else {
+          // Tab is focused - show breathing exercise popup
+          setShowBreathingExercise(true);
+        }
+      }
       // Don't update state immediately - wait for confirmation from server
     } catch (error) {
       console.error('Error sending mental state change:', error);
@@ -559,6 +775,55 @@ const Dashboard = ({ currentUser }) => {
           </ResponsiveContainer>
         )}
       </div>
+
+      {/* Breathing Exercise Popup */}
+      {showBreathingExercise && (
+        <div className="breathing-exercise-overlay" onClick={() => {
+          wasManuallyClosedRef.current = true;
+          setShowBreathingExercise(false);
+          setEncouragingMessage(null);
+        }}>
+          <div className="breathing-exercise-popup" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="breathing-exercise-close"
+              onClick={() => {
+                wasManuallyClosedRef.current = true;
+                setShowBreathingExercise(false);
+                setEncouragingMessage(null);
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className="breathing-exercise-content">
+              <h3>Calming Breathing Exercise</h3>
+              <p className="breathing-instruction">
+                {breathingPhase === 'inhale' && 'Breathe in slowly...'}
+                {breathingPhase === 'hold' && 'Hold your breath...'}
+                {breathingPhase === 'exhale' && 'Breathe out slowly...'}
+                {breathingPhase === 'pause' && 'Pause...'}
+              </p>
+              <div className={`breathing-circle ${breathingPhase}`}>
+                <div className="breathing-circle-inner"></div>
+              </div>
+              <p className="breathing-cycle-info">Cycle {breathingCycle}</p>
+              <p className="breathing-tip">
+                Focus on your breath. Take your time and find your natural rhythm.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Encouraging Message Toast */}
+      {encouragingMessage && (
+        <div className="encouraging-message-toast">
+          <div className="encouraging-message-content">
+            <span className="encouraging-message-icon">✨</span>
+            <p>{encouragingMessage}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
